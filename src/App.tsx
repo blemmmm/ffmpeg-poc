@@ -10,6 +10,7 @@ import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Separator } from "./components/ui/separator";
+import { Progress } from "./components/ui/progress";
 
 function App() {
   const { toast } = useToast();
@@ -21,6 +22,7 @@ function App() {
   const [videoURL, setVideoURL] = useState("");
   const [file, setFile] = useState<File>();
   const [isTranscoded, setIsTranscoded] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const load = async () => {
     const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
@@ -28,6 +30,14 @@ function App() {
     ffmpeg.on("log", ({ message }) => {
       if (messageRef.current) messageRef.current.innerHTML = message;
     });
+
+    ffmpeg.on("progress", ({ progress }) => {
+      console.log(progress);
+      if (progress <= 1) {
+        setProgress(Math.ceil(Math.abs(progress) * 100));
+      }
+    });
+
     // toBlobURL is used to bypass CORS issue, urls with the same
     // domain can be used directly.
     await ffmpeg.load({
@@ -68,9 +78,9 @@ function App() {
       setUploadedVideos([...uploadedVideos, transcodedData]);
       setIsTranscoded(true);
       toast({
+        variant: "success",
         title: "Success",
         description: "Video transcoded successfully",
-        color: "green",
       });
     }
   };
@@ -82,7 +92,7 @@ function App() {
   }, []);
 
   return (
-    <>
+    <div className="flex items-start gap-4">
       <ScrollArea className="flex flex-col items-start justify-center gap-2 w-72 m-10">
         {uploadedVideos.map((video) => (
           <>
@@ -97,12 +107,18 @@ function App() {
           </>
         ))}
       </ScrollArea>
-      <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)]">
+      <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)] flex-1">
         {loaded ? (
           <div className="flex flex-col items-center justify-center">
             {videoURL !== "" ? (
               <>
-                <video ref={videoRef} controls src={videoURL}></video>
+                <video
+                  ref={videoRef}
+                  controls
+                  src={videoURL}
+                  height={600}
+                  width={750}
+                ></video>
                 <br />
 
                 {isTranscoded ? (
@@ -112,6 +128,7 @@ function App() {
                       setFile(undefined);
                       setIsTranscoded(false);
                       setVideoURL("");
+                      setProgress(0);
                     }}
                     className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
                   >
@@ -124,9 +141,12 @@ function App() {
                       onClick={transcode}
                       className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
                     >
-                      Transcode mp4 to mp3
+                      Transcode video to mp3
                     </Button>
-                    <p ref={messageRef}></p>
+                    <div className="flex items-center gap-1 w-full">
+                      <Progress value={progress} className="" />
+                      <span>{progress}%</span>
+                    </div>
                   </>
                 )}
               </>
@@ -152,7 +172,7 @@ function App() {
         ) : null}
         <Toaster />
       </div>
-    </>
+    </div>
   );
 }
 
