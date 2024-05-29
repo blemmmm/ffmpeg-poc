@@ -23,6 +23,19 @@ function App() {
   const [file, setFile] = useState<File>();
   const [isTranscoded, setIsTranscoded] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [timeElapsed, setTimeElapsed] = useState(0); //seconds
+  const [audioBase64, setAudioBase64] = useState<string | ArrayBuffer | null>();
+  const [videoBase64, setVideoBase64] = useState<string | ArrayBuffer | null>();
+  const [transcodedData, setTranscodedData] = useState<IVideo>({
+    id: "",
+    video_url: "",
+    audio_url: "",
+    file_name: "input.mp3",
+    source_file_type: "video/mp4",
+    created_at: "",
+    video_base64: "",
+    audio_base64: "",
+  });
 
   const load = async () => {
     const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
@@ -31,10 +44,11 @@ function App() {
       if (messageRef.current) messageRef.current.innerHTML = message;
     });
 
-    ffmpeg.on("progress", ({ progress }) => {
-      console.log(progress);
+    ffmpeg.on("progress", ({ progress, time }) => {
+      console.log(time);
       if (progress <= 1) {
         setProgress(Math.ceil(Math.abs(progress) * 100));
+        setTimeElapsed(time / 1000000);
       }
     });
 
@@ -60,22 +74,37 @@ function App() {
     await ffmpeg.exec(["-i", "input.mp4", "output.mp3"]);
     const fileData = await ffmpeg.readFile("output.mp3");
     const data = new Uint8Array(fileData as ArrayBuffer);
+    const audioBlob = new Blob([data], { type: "application/octet-stream" });
+    const videoBlob = new Blob([file!], { type: file?.type || "video/mp4" });
+
     if (videoRef.current) {
       const audioURL = URL.createObjectURL(
         new Blob([data.buffer], { type: "audio/mp3" })
       );
       videoRef.current.src = audioURL;
 
-      const transcodedData: IVideo = {
+      // video file reader instance
+      const videoReader = new FileReader();
+      videoReader.readAsDataURL(videoBlob);
+      videoReader.addEventListener("load", (e: ProgressEvent<FileReader>) => {
+        setVideoBase64(e.target?.result);
+      });
+
+      //audio file reader instance
+      const audioReader = new FileReader();
+      audioReader.readAsDataURL(audioBlob);
+      audioReader.addEventListener("load", (e: ProgressEvent<FileReader>) => {
+        setAudioBase64(e.target?.result);
+      });
+
+      setTranscodedData({
         id: uuidv4(),
         video_url: videoURL,
         audio_url: audioURL,
         file_name: file?.name || "input.mp3",
         source_file_type: file?.type || "video/mp4",
         created_at: new Date().toISOString(),
-      };
-
-      setUploadedVideos([...uploadedVideos, transcodedData]);
+      });
       setIsTranscoded(true);
       toast({
         variant: "success",
@@ -90,6 +119,20 @@ function App() {
       load(); //load ffmpeg
     }
   }, []);
+
+  useEffect(() => {
+    if (audioBase64 && videoBase64) {
+      setTranscodedData((prev) => {
+        return {
+          ...prev,
+          video_base64: videoBase64,
+          audio_base64: audioBase64,
+        };
+      });
+    }
+  }, [videoBase64, audioBase64]);
+
+  console.log({ audioBase64, videoBase64 });
 
   return (
     <div className="flex items-start gap-4">
@@ -143,6 +186,7 @@ function App() {
                     >
                       Transcode video to mp3
                     </Button>
+                    <span>Time: {timeElapsed} s</span>
                     <div className="flex items-center gap-1 w-full">
                       <Progress value={progress} className="" />
                       <span>{progress}%</span>

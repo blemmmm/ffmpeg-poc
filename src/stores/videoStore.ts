@@ -8,6 +8,8 @@ export interface IVideo {
   file_name: string;
   source_file_type: string;
   created_at: string;
+  video_base64?: string | ArrayBuffer | null;
+  audio_base64?: string | ArrayBuffer | null;
 }
 
 export interface StoreState {
