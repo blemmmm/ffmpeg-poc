@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { toBlobURL, fetchFile } from "@ffmpeg/util";
 import { Button } from "./components/ui/button";
@@ -11,8 +11,19 @@ import { useToast } from "./components/ui/use-toast";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Separator } from "./components/ui/separator";
 import { Progress } from "./components/ui/progress";
+import localforage, { INDEXEDDB } from "localforage";
+// import SyncerW from './workers/app.worker';
 
 function App() {
+
+  // const syncerWorker = useMemo(() => new Worker(SyncerW), []);
+
+  // useEffect(() => {
+  //   return () =>  {
+  //     syncerWorker.terminate();
+  //   }
+  // },[]);
+
   const { toast } = useToast();
   const { uploadedVideos, setUploadedVideos } = useVideoStore();
   const [loaded, setLoaded] = useState(false);
@@ -121,6 +132,22 @@ function App() {
   }, []);
 
   useEffect(() => {
+    localforage.setDriver(INDEXEDDB);
+    localforage.getItem("files").then((value: any) => {
+      if(value){
+        if(value.length > 0){
+          setUploadedVideos(value);
+        }
+        else{
+          setUploadedVideos([])
+        }
+      }
+    }).catch((err) => {
+      console.log(err);
+    })
+  },[]);
+
+  useEffect(() => {
     if (audioBase64 && videoBase64) {
       setTranscodedData((prev) => {
         return {
@@ -129,6 +156,59 @@ function App() {
           audio_base64: audioBase64,
         };
       });
+
+      localforage.setDriver(INDEXEDDB);
+
+      localforage.getItem("files").then((value: any) => {
+        if(value){
+          if(value.length > 0){
+            localforage.setItem("files", [...value, {
+              ...transcodedData,
+              video_base64: videoBase64,
+              audio_base64: audioBase64,
+            }])
+            setUploadedVideos([...value, {
+              ...transcodedData,
+              video_base64: videoBase64,
+              audio_base64: audioBase64,
+            }]);
+          }
+          else{
+            localforage.setItem("files", [{
+              ...transcodedData,
+              video_base64: videoBase64,
+              audio_base64: audioBase64,
+            }])
+            setUploadedVideos([{
+              ...transcodedData,
+              video_base64: videoBase64,
+              audio_base64: audioBase64,
+            }])
+          }
+        }
+        else{
+          localforage.setItem("files", [{
+            ...transcodedData,
+            video_base64: videoBase64,
+            audio_base64: audioBase64,
+          }])
+          setUploadedVideos([{
+            ...transcodedData,
+            video_base64: videoBase64,
+            audio_base64: audioBase64,
+          }])
+        }
+      }).catch((err) => {
+        console.log(err);
+      })
+
+      // if(syncerWorker){
+      //   syncerWorker.postMessage({ event: "store_file", data: {
+      //     ...transcodedData,
+      //     video_base64: videoBase64,
+      //     audio_base64: audioBase64,
+      //   } })
+      // }
     }
   }, [videoBase64, audioBase64]);
 
@@ -137,17 +217,19 @@ function App() {
   return (
     <div className="flex items-start gap-4">
       <ScrollArea className="flex flex-col items-start justify-center gap-2 w-72 m-10">
-        {uploadedVideos.map((video) => (
-          <>
+        {uploadedVideos.map((video, i: number) => (
+          <div key={video.id + "_" + i}>
             <div
-              key={video.id}
-              className="text-sm truncate w-full underline cursor-pointer"
+              className="text-sm truncate w-full underline cursor-pointer w-[350px]"
               title={video.file_name}
             >
+              {video.video_base64 && (
+                <video src={video.video_base64.toString()} controls className="w-full" />
+              )}
               {video.file_name}
             </div>
             <Separator className="my-2" />
-          </>
+          </div>
         ))}
       </ScrollArea>
       <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)] flex-1">
