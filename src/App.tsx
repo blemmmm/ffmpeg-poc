@@ -12,6 +12,7 @@ import { Progress } from "./components/ui/progress";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { IVideo } from "./stores/videoStore";
+import WaveSurfer from "wavesurfer.js";
 
 function App() {
   const { toast } = useToast();
@@ -28,6 +29,7 @@ function App() {
   const [audioBase64, setAudioBase64] = useState<string | ArrayBuffer | null>();
   const [videoBase64, setVideoBase64] = useState<string | ArrayBuffer | null>();
   const [thumbnail, setThumbnail] = useState<string>();
+  const [isWaveformReady, setIsWaveformReady] = useState(false);
   const [transcodedData, setTranscodedData] = useState<IVideo>({
     id: "",
     video_url: "",
@@ -38,6 +40,7 @@ function App() {
     video_base64: "",
     audio_base64: "",
   });
+  const waveformRef = useRef<any>(null);
 
   const load = async () => {
     const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
@@ -159,6 +162,54 @@ function App() {
     return () => clearInterval(intervalId);
   }, [isTranscoding, videoURL]);
 
+  useEffect(() => {
+    if (typeof videoURL === "string" && waveformRef.current) {
+      // const blob = new Blob([transcodedData.audio_base64], {
+      //   type: "audio/mp3",
+      // });
+      const url = videoURL;
+      const wavesurfer = WaveSurfer.create({
+        container: "#waveform",
+        height: "auto",
+        waveColor: "rgb(200, 0, 200)",
+        progressColor: "rgb(100, 0, 100)",
+        // hideScrollbar: true,
+        cursorWidth: 0,
+
+        interact: false,
+        fillParent: true,
+        media: document.querySelector("video"),
+
+        // normalize: true,
+      });
+
+      wavesurfer.load(url);
+
+      wavesurfer.on("ready", () => {
+        waveformRef.current = wavesurfer;
+      });
+
+      wavesurfer.on("redrawcomplete", () => {
+        // wavesurfer.zoom(zoomSize + 150);
+        setIsWaveformReady(true);
+      });
+
+      wavesurfer.on("redraw", () => {
+        setIsWaveformReady(false);
+      });
+
+      wavesurfer.on("loading", () => {
+        // console.log('loading');
+        setIsWaveformReady(false);
+        // setWaveformProgress(percent);
+      });
+
+      return () => wavesurfer.destroy();
+    }
+  }, [videoURL]);
+
+  console.log(isWaveformReady);
+
   return (
     <div className="flex items-start gap-4">
       <div className="flex items-center justify-center w-screen h-screen flex-1">
@@ -171,8 +222,8 @@ function App() {
                     ref={videoRef}
                     controls
                     src={videoURL}
-                    height={600}
-                    width={750}
+                    height={400}
+                    width={550}
                   ></video>
                 )}
                 <br />
@@ -189,8 +240,8 @@ function App() {
                       ref={videoRef}
                       controls
                       src={transcodedData.video_base64 as string}
-                      height={600}
-                      width={750}
+                      height={400}
+                      width={550}
                     ></video>
 
                     <div className=" flex flex-col gap-2">
@@ -249,6 +300,11 @@ function App() {
                 />
               </div>
             )}
+            <div
+              id="waveform"
+              ref={waveformRef}
+              className="w-[99vw] h-14 overflow-x-auto"
+            />
           </div>
         ) : null}
 
