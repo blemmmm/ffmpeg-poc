@@ -178,7 +178,7 @@ function App() {
 
         interact: false,
         fillParent: true,
-        media: document.querySelector("video"),
+        media: document.querySelector("video")!,
 
         // normalize: true,
       });
