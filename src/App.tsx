@@ -12,6 +12,7 @@ import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Separator } from "./components/ui/separator";
 import { Progress } from "./components/ui/progress";
 import localforage, { INDEXEDDB } from "localforage";
+import { UploadFile } from "./requests/https";
 // import SyncerW from './workers/app.worker';
 
 function App() {
@@ -159,19 +160,33 @@ function App() {
 
       localforage.setDriver(INDEXEDDB);
 
-      localforage.getItem("files").then((value: any) => {
-        if(value){
-          if(value.length > 0){
-            localforage.setItem("files", [...value, {
-              ...transcodedData,
-              video_base64: videoBase64,
-              audio_base64: audioBase64,
-            }])
-            setUploadedVideos([...value, {
-              ...transcodedData,
-              video_base64: videoBase64,
-              audio_base64: audioBase64,
-            }]);
+      UploadFile(videoBase64).then((_) => {
+        localforage.getItem("files").then((value: any) => {
+          if(value){
+            if(value.length > 0){
+              localforage.setItem("files", [...value, {
+                ...transcodedData,
+                video_base64: videoBase64,
+                audio_base64: audioBase64,
+              }])
+              setUploadedVideos([...value, {
+                ...transcodedData,
+                video_base64: videoBase64,
+                audio_base64: audioBase64,
+              }]);
+            }
+            else{
+              localforage.setItem("files", [{
+                ...transcodedData,
+                video_base64: videoBase64,
+                audio_base64: audioBase64,
+              }])
+              setUploadedVideos([{
+                ...transcodedData,
+                video_base64: videoBase64,
+                audio_base64: audioBase64,
+              }])
+            }
           }
           else{
             localforage.setItem("files", [{
@@ -185,23 +200,13 @@ function App() {
               audio_base64: audioBase64,
             }])
           }
-        }
-        else{
-          localforage.setItem("files", [{
-            ...transcodedData,
-            video_base64: videoBase64,
-            audio_base64: audioBase64,
-          }])
-          setUploadedVideos([{
-            ...transcodedData,
-            video_base64: videoBase64,
-            audio_base64: audioBase64,
-          }])
-        }
+        }).catch((err) => {
+          console.log(err);
+        })
+  
       }).catch((err) => {
         console.log(err);
       })
-
       // if(syncerWorker){
       //   syncerWorker.postMessage({ event: "store_file", data: {
       //     ...transcodedData,
