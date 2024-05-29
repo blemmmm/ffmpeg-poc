@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
 
 export interface IVideo {
   id: string;
@@ -9,7 +8,7 @@ export interface IVideo {
   source_file_type: string;
   created_at: string;
   video_base64?: string | ArrayBuffer | null;
-  audio_base64?: string | ArrayBuffer | null;
+  audio_base64?: string | ArrayBuffer | Blob | null;
   thumbnail?: string;
 }
 
@@ -19,10 +18,8 @@ export interface StoreState {
   removeVideos: () => void;
 }
 
-export const useVideoStore = create<StoreState>()(
-    (set) => ({
-      uploadedVideos: [],
-      setUploadedVideos: (value: IVideo[]) => set({ uploadedVideos: value }),
-      removeVideos: () => set({ uploadedVideos: [] }),
-    })
-);
+export const useVideoStore = create<StoreState>()((set) => ({
+  uploadedVideos: [],
+  setUploadedVideos: (value: IVideo[]) => set({ uploadedVideos: value }),
+  removeVideos: () => set({ uploadedVideos: [] }),
+}));
