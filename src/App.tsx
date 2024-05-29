@@ -1,20 +1,20 @@
-import { useState, useRef, useEffect } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { toBlobURL, fetchFile } from "@ffmpeg/util";
-import { Button } from "./components/ui/button";
-import { Label } from "./components/ui/label";
-import { Input } from "./components/ui/input";
-import { IVideo, useVideoStore } from "./stores/videoStore";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import { generateVideoThumbnails } from "@rajesh896/video-thumbnails-generator";
+import { Duration } from "luxon";
+import { useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
+import { Progress } from "./components/ui/progress";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { Separator } from "./components/ui/separator";
-import { Progress } from "./components/ui/progress";
+import { IVideo } from "./stores/videoStore";
 
 function App() {
   const { toast } = useToast();
-  const { uploadedVideos, setUploadedVideos } = useVideoStore();
   const [loaded, setLoaded] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -22,10 +22,12 @@ function App() {
   const [videoURL, setVideoURL] = useState("");
   const [file, setFile] = useState<File>();
   const [isTranscoded, setIsTranscoded] = useState(false);
+  const [isTranscoding, setIsTranscoding] = useState(false);
   const [progress, setProgress] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0); //seconds
   const [audioBase64, setAudioBase64] = useState<string | ArrayBuffer | null>();
   const [videoBase64, setVideoBase64] = useState<string | ArrayBuffer | null>();
+  const [thumbnail, setThumbnail] = useState<string>();
   const [transcodedData, setTranscodedData] = useState<IVideo>({
     id: "",
     video_url: "",
@@ -44,11 +46,9 @@ function App() {
       if (messageRef.current) messageRef.current.innerHTML = message;
     });
 
-    ffmpeg.on("progress", ({ progress, time }) => {
-      console.log(time);
+    ffmpeg.on("progress", ({ progress }) => {
       if (progress <= 1) {
         setProgress(Math.ceil(Math.abs(progress) * 100));
-        setTimeElapsed(time / 1000000);
       }
     });
 
@@ -69,6 +69,8 @@ function App() {
   };
 
   const transcode = async () => {
+    // if (file && file.type === "audio/mp3") return
+    setIsTranscoding(true);
     const ffmpeg = ffmpegRef.current;
     await ffmpeg.writeFile("input.mp4", await fetchFile(videoURL));
     await ffmpeg.exec(["-i", "input.mp4", "output.mp3"]);
@@ -81,7 +83,7 @@ function App() {
       const audioURL = URL.createObjectURL(
         new Blob([data.buffer], { type: "audio/mp3" })
       );
-      videoRef.current.src = audioURL;
+      // videoRef.current.src = audioURL;
 
       // video file reader instance
       const videoReader = new FileReader();
@@ -97,6 +99,12 @@ function App() {
         setAudioBase64(e.target?.result);
       });
 
+      if (file) {
+        generateVideoThumbnails(file, 3, "file").then((res: string[]) => {
+          setThumbnail(res[2]);
+        });
+      }
+
       setTranscodedData({
         id: uuidv4(),
         video_url: videoURL,
@@ -104,12 +112,6 @@ function App() {
         file_name: file?.name || "input.mp3",
         source_file_type: file?.type || "video/mp4",
         created_at: new Date().toISOString(),
-      });
-      setIsTranscoded(true);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Video transcoded successfully",
       });
     }
   };
@@ -121,72 +123,107 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (audioBase64 && videoBase64) {
+    if (audioBase64 && videoBase64 && thumbnail) {
       setTranscodedData((prev) => {
         return {
           ...prev,
           video_base64: videoBase64,
           audio_base64: audioBase64,
+          thumbnail: thumbnail,
         };
       });
+      setIsTranscoded(true);
+      toast({
+        variant: "success",
+        title: "Success",
+        description: "Video transcoded successfully",
+      });
+      setIsTranscoding(false);
     }
-  }, [videoBase64, audioBase64]);
+  }, [videoBase64, audioBase64, thumbnail]);
+  console.log({ transcodedData });
 
-  console.log({ audioBase64, videoBase64 });
+  useEffect(() => {
+    let intervalId: string | number | NodeJS.Timeout | undefined;
+    if (videoURL !== "" && isTranscoding) {
+      // setting time from 0 to 1 every 10 milisecond using javascript setInterval method
+      intervalId = setInterval(
+        () => setTimeElapsed((prevTime) => prevTime + 0.01),
+        10
+      );
+    }
+    if (!isTranscoding) {
+      clearInterval(intervalId);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [isTranscoding, videoURL]);
 
   return (
     <div className="flex items-start gap-4">
-      <ScrollArea className="flex flex-col items-start justify-center gap-2 w-72 m-10">
-        {uploadedVideos.map((video) => (
-          <>
-            <div
-              key={video.id}
-              className="text-sm truncate w-full underline cursor-pointer"
-              title={video.file_name}
-            >
-              {video.file_name}
-            </div>
-            <Separator className="my-2" />
-          </>
-        ))}
-      </ScrollArea>
-      <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)] flex-1">
+      <div className="flex items-center justify-center w-screen h-screen flex-1">
         {loaded ? (
           <div className="flex flex-col items-center justify-center">
             {videoURL !== "" ? (
               <>
-                <video
-                  ref={videoRef}
-                  controls
-                  src={videoURL}
-                  height={600}
-                  width={750}
-                ></video>
+                {!isTranscoded && (
+                  <video
+                    ref={videoRef}
+                    controls
+                    src={videoURL}
+                    height={600}
+                    width={750}
+                  ></video>
+                )}
                 <br />
+                <span className="mb-2">
+                  Time:{" "}
+                  {Duration.fromObject({ seconds: timeElapsed }).toFormat(
+                    "mm:ss"
+                  )}{" "}
+                </span>
 
                 {isTranscoded ? (
-                  <Button
-                    variant={"default"}
-                    onClick={() => {
-                      setFile(undefined);
-                      setIsTranscoded(false);
-                      setVideoURL("");
-                      setProgress(0);
-                    }}
-                    className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
-                  >
-                    Upload new file
-                  </Button>
-                ) : (
                   <>
+                    <video
+                      ref={videoRef}
+                      controls
+                      src={transcodedData.video_base64 as string}
+                      height={600}
+                      width={750}
+                    ></video>
+
+                    <div className=" flex flex-col gap-2">
+                      <span>Generated Thumbnail:</span>
+                      <img src={thumbnail} height={200} width={300} />
+                    </div>
+
                     <Button
                       variant={"default"}
-                      onClick={transcode}
-                      className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
+                      onClick={() => {
+                        setFile(undefined);
+                        setIsTranscoded(false);
+                        setVideoURL("");
+                        setProgress(0);
+                        setTimeElapsed(0);
+                      }}
+                      className=" border border-solid border-gray-400 px-2 py-1 rounded-md mb-2"
                     >
-                      Transcode video to mp3
+                      Upload new file
                     </Button>
-                    <span>Time: {timeElapsed} s</span>
+                  </>
+                ) : (
+                  <>
+                    {!isTranscoding && (
+                      <Button
+                        variant={"default"}
+                        onClick={transcode}
+                        className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
+                      >
+                        Transcode video to mp3
+                      </Button>
+                    )}
+
                     <div className="flex items-center gap-1 w-full">
                       <Progress value={progress} className="" />
                       <span>{progress}%</span>
@@ -214,6 +251,7 @@ function App() {
             )}
           </div>
         ) : null}
+
         <Toaster />
       </div>
     </div>

@@ -10,6 +10,7 @@ export interface IVideo {
   created_at: string;
   video_base64?: string | ArrayBuffer | null;
   audio_base64?: string | ArrayBuffer | null;
+  thumbnail?: string;
 }
 
 export interface StoreState {
