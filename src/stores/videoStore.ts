@@ -20,15 +20,9 @@ export interface StoreState {
 }
 
 export const useVideoStore = create<StoreState>()(
-  persist(
     (set) => ({
       uploadedVideos: [],
       setUploadedVideos: (value: IVideo[]) => set({ uploadedVideos: value }),
       removeVideos: () => set({ uploadedVideos: [] }),
-    }),
-    {
-      name: "video-storage",
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
+    })
 );
