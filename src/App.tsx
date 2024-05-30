@@ -95,7 +95,15 @@ function App() {
     setIsTranscoding(true);
     const ffmpeg = ffmpegRef.current;
     await ffmpeg.writeFile("input.mp4", await fetchFile(videoURL));
-    await ffmpeg.exec(["-i", "input.mp4", "output.mp3"]);
+    await ffmpeg.exec([
+      "-i",
+      "input.mp4",
+      "-af",
+      "highpass=f=200, lowpass=f=3000, afftdn=nf=-80:rf=-80",
+      "-b:a",
+      "64k",
+      "output.mp3",
+    ]);
     const fileData = await ffmpeg.readFile("output.mp3");
     const data = new Uint8Array(fileData as ArrayBuffer);
     const audioBlob = new Blob([data.buffer], { type: "audio/mp3" });
@@ -105,6 +113,14 @@ function App() {
       const audioURL = URL.createObjectURL(
         new Blob([data.buffer], { type: "audio/mp3" })
       );
+
+      const downloadLink = document.createElement("a");
+      downloadLink.href = audioURL;
+      downloadLink.download = "output.mp3";
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
       setAudioBase64(audioBlob);
       // videoRef.current.src = audioURL;
 
@@ -331,7 +347,7 @@ function App() {
 
   return (
     <div className="flex items-start gap-4">
-      <ScrollArea className="flex flex-col items-start justify-center gap-2 w-72 m-10">
+      {/* <ScrollArea className="flex flex-col items-start justify-center gap-2 w-72 m-10 ">
         {uploadedVideos.map((video, i: number) => (
           <div key={video.id + "_" + i}>
             <div
@@ -350,7 +366,7 @@ function App() {
             <Separator className="my-2" />
           </div>
         ))}
-      </ScrollArea>
+      </ScrollArea> */}
       <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)] flex-1">
         {loaded ? (
           <div className="flex flex-col items-center justify-center">
