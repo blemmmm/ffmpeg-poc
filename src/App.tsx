@@ -3,7 +3,6 @@
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { generateVideoThumbnails } from "@rajesh896/video-thumbnails-generator";
 import localforage, { INDEXEDDB } from "localforage";
 import { Duration } from "luxon";
@@ -14,10 +13,8 @@ import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Progress } from "./components/ui/progress";
-import { Separator } from "./components/ui/separator";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
-import { UploadFile } from "./requests/https";
 import { IVideo, useVideoStore } from "./stores/videoStore";
 // import SyncerW from './workers/app.worker';
 
@@ -45,8 +42,11 @@ function App() {
   const [audioBase64, setAudioBase64] = useState<
     string | ArrayBuffer | Blob | null
   >();
-  const [videoBase64, setVideoBase64] = useState<string | ArrayBuffer | null>();
+  const [videoBase64, setVideoBase64] = useState<
+    string | ArrayBuffer | Blob | null
+  >();
   const [thumbnail, setThumbnail] = useState<string>();
+  const [peaks, setPeaks] = useState<(Float32Array | number[])[]>();
   const [isWaveformReady, setIsWaveformReady] = useState(false);
   const [transcodedData, setTranscodedData] = useState<IVideo>({
     id: "",
@@ -60,6 +60,7 @@ function App() {
     thumbnail: "",
   });
   const waveformRef = useRef<any>(null);
+  // const { handleChunkVideo } = useVideoChunk(); // TODO: call this if the video is ready for s3 upload
 
   const load = async () => {
     const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
@@ -122,14 +123,16 @@ function App() {
       document.body.removeChild(downloadLink);
 
       setAudioBase64(audioBlob);
+      setVideoBase64(videoBlob);
+
       // videoRef.current.src = audioURL;
 
       // video file reader instance
-      const videoReader = new FileReader();
-      videoReader.readAsDataURL(videoBlob);
-      videoReader.addEventListener("load", (e: ProgressEvent<FileReader>) => {
-        setVideoBase64(e.target?.result);
-      });
+      // const videoReader = new FileReader();
+      // videoReader.readAsDataURL(videoBlob);
+      // videoReader.addEventListener("load", (e: ProgressEvent<FileReader>) => {
+      //   setVideoBase64(e.target?.result);
+      // });
 
       //audio file reader instance
       const audioReader = new FileReader();
@@ -140,8 +143,8 @@ function App() {
       );
 
       if (file) {
-        generateVideoThumbnails(file, 3, "file").then((res: string[]) => {
-          setThumbnail(res[2]);
+        generateVideoThumbnails(file, 2, "file").then((res: string[]) => {
+          setThumbnail(res[1]);
         });
       }
 
@@ -185,14 +188,38 @@ function App() {
       });
   }, []);
 
+  const getPeaks = async () => {
+    const peaks = await fetch("sample_peak.json");
+    const response = await peaks.json();
+    setPeaks(response.data);
+    // const chunkedVideo = await handleChunkVideo(file!);     // function for video chunking
+    // if (chunkedVideo) {
+    //   setVideoBase64(chunkedVideo.video_base64);
+    // }
+  };
+
   useEffect(() => {
-    if (audioBase64 && videoBase64 && thumbnail) {
+    if (videoBase64) {
       setTranscodedData((prev) => {
         return {
           ...prev,
           video_base64: videoBase64,
+          // audio_base64: audioBase64,
+          // thumbnail: thumbnail,
+        };
+      });
+    }
+  }, [videoBase64]);
+
+  useEffect(() => {
+    if (audioBase64) {
+      getPeaks();
+      setTranscodedData((prev) => {
+        return {
+          ...prev,
+          // video_base64: videoBase64,
           audio_base64: audioBase64,
-          thumbnail: thumbnail,
+          // thumbnail: thumbnail,
         };
       });
       setIsTranscoded(true);
@@ -203,77 +230,77 @@ function App() {
       });
       setIsTranscoding(false);
 
-      localforage.setDriver(INDEXEDDB);
+      // localforage.setDriver(INDEXEDDB);
 
-      UploadFile(audioBase64)
-        .then((_) => {
-          localforage
-            .getItem("files")
-            .then((value: any) => {
-              if (value) {
-                if (value.length > 0) {
-                  localforage.setItem("files", [
-                    ...value,
-                    {
-                      ...transcodedData,
-                      video_base64: videoBase64,
-                      audio_base64: audioBase64,
-                      thumbnail: thumbnail,
-                    },
-                  ]);
-                  setUploadedVideos([
-                    ...value,
-                    {
-                      ...transcodedData,
-                      video_base64: videoBase64,
-                      audio_base64: audioBase64,
-                      thumbnail: thumbnail,
-                    },
-                  ]);
-                } else {
-                  localforage.setItem("files", [
-                    {
-                      ...transcodedData,
-                      video_base64: videoBase64,
-                      audio_base64: audioBase64,
-                      thumbnail: thumbnail,
-                    },
-                  ]);
-                  setUploadedVideos([
-                    {
-                      ...transcodedData,
-                      video_base64: videoBase64,
-                      audio_base64: audioBase64,
-                      thumbnail: thumbnail,
-                    },
-                  ]);
-                }
-              } else {
-                localforage.setItem("files", [
-                  {
-                    ...transcodedData,
-                    video_base64: videoBase64,
-                    audio_base64: audioBase64,
-                    thumbnail: thumbnail,
-                  },
-                ]);
-                setUploadedVideos([
-                  {
-                    ...transcodedData,
-                    video_base64: videoBase64,
-                    audio_base64: audioBase64,
-                    thumbnail: thumbnail,
-                  },
-                ]);
-              }
-            })
-            .catch((err) => {
-              console.log(err);
-            });
-        })
-        .catch((err) => {
-          console.log(err);
-        });
+      // UploadFile(audioBase64)
+      //   .then((_) => {
+      //     localforage
+      //       .getItem("files")
+      //       .then((value: any) => {
+      //         if (value) {
+      //           if (value.length > 0) {
+      //             localforage.setItem("files", [
+      //               ...value,
+      //               {
+      //                 ...transcodedData,
+      //                 video_base64: videoBase64,
+      //                 audio_base64: audioBase64,
+      //                 thumbnail: thumbnail,
+      //               },
+      //             ]);
+      //             setUploadedVideos([
+      //               ...value,
+      //               {
+      //                 ...transcodedData,
+      //                 video_base64: videoBase64,
+      //                 audio_base64: audioBase64,
+      //                 thumbnail: thumbnail,
+      //               },
+      //             ]);
+      //           } else {
+      //             localforage.setItem("files", [
+      //               {
+      //                 ...transcodedData,
+      //                 video_base64: videoBase64,
+      //                 audio_base64: audioBase64,
+      //                 thumbnail: thumbnail,
+      //               },
+      //             ]);
+      //             setUploadedVideos([
+      //               {
+      //                 ...transcodedData,
+      //                 video_base64: videoBase64,
+      //                 audio_base64: audioBase64,
+      //                 thumbnail: thumbnail,
+      //               },
+      //             ]);
+      //           }
+      //         } else {
+      //           localforage.setItem("files", [
+      //             {
+      //               ...transcodedData,
+      //               video_base64: videoBase64,
+      //               audio_base64: audioBase64,
+      //               thumbnail: thumbnail,
+      //             },
+      //           ]);
+      //           setUploadedVideos([
+      //             {
+      //               ...transcodedData,
+      //               video_base64: videoBase64,
+      //               audio_base64: audioBase64,
+      //               thumbnail: thumbnail,
+      //             },
+      //           ]);
+      //         }
+      //       })
+      //       .catch((err) => {
+      //         console.log(err);
+      //       });
+      //   })
+      //   .catch((err) => {
+      //     console.log(err);
+      //   });
       // if(syncerWorker){
       //   syncerWorker.postMessage({ event: "store_file", data: {
       //     ...transcodedData,
@@ -282,7 +309,7 @@ function App() {
       //   } })
       // }
     }
-  }, [videoBase64, audioBase64, thumbnail]);
+  }, [audioBase64]);
 
   useEffect(() => {
     let intervalId: string | number | NodeJS.Timeout | undefined;
@@ -300,8 +327,10 @@ function App() {
     return () => clearInterval(intervalId);
   }, [isTranscoding, videoURL]);
 
+  console.log(videoBase64);
+
   useEffect(() => {
-    if (typeof videoURL === "string" && waveformRef.current) {
+    if (typeof videoURL === "string" && waveformRef.current && peaks) {
       // const blob = new Blob([transcodedData.audio_base64], {
       //   type: "audio/mp3",
       // });
@@ -316,34 +345,37 @@ function App() {
 
         interact: false,
         fillParent: true,
+        peaks: peaks,
 
-        // normalize: true,
+        normalize: true,
       });
 
-      wavesurfer.load(url);
+      if (isTranscoded) {
+        wavesurfer.load(url, peaks);
 
-      wavesurfer.on("ready", () => {
-        waveformRef.current = wavesurfer;
-      });
+        wavesurfer.on("ready", () => {
+          waveformRef.current = wavesurfer;
+        });
 
-      wavesurfer.on("redrawcomplete", () => {
-        // wavesurfer.zoom(zoomSize + 150);
-        setIsWaveformReady(true);
-      });
+        wavesurfer.on("redrawcomplete", () => {
+          // wavesurfer.zoom(zoomSize + 150);
+          setIsWaveformReady(true);
+        });
 
-      wavesurfer.on("redraw", () => {
-        setIsWaveformReady(false);
-      });
+        wavesurfer.on("redraw", () => {
+          setIsWaveformReady(false);
+        });
 
-      wavesurfer.on("loading", () => {
-        // console.log('loading');
-        setIsWaveformReady(false);
-        // setWaveformProgress(percent);
-      });
+        wavesurfer.on("loading", () => {
+          // console.log('loading');
+          setIsWaveformReady(false);
+          // setWaveformProgress(percent);
+        });
+      }
 
       return () => wavesurfer.destroy();
     }
-  }, [videoURL]);
+  }, [videoURL, isTranscoded, peaks]);
 
   return (
     <div className="flex items-start gap-4">
@@ -394,7 +426,9 @@ function App() {
                     <video
                       ref={videoRef}
                       controls
-                      src={transcodedData.video_base64 as string}
+                      src={URL.createObjectURL(
+                        transcodedData.video_base64 as Blob
+                      )}
                       height={300}
                       width={450}
                     ></video>
@@ -412,6 +446,8 @@ function App() {
                         setVideoURL("");
                         setProgress(0);
                         setTimeElapsed(0);
+                        setAudioBase64(undefined);
+                        setVideoBase64(undefined);
                       }}
                       className=" border border-solid border-gray-400 px-2 py-1 rounded-md mb-2"
                     >
@@ -461,6 +497,9 @@ function App() {
         <Toaster />
       </div>
       <div className="fixed bottom-0">
+        {!isWaveformReady && isTranscoded && (
+          <span>Generating waveform...</span>
+        )}
         <div
           id="waveform"
           ref={waveformRef}
