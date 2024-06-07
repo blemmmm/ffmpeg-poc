@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
 import { generateVideoThumbnails } from "@rajesh896/video-thumbnails-generator";
 import localforage, { INDEXEDDB } from "localforage";
 import { Duration } from "luxon";
@@ -16,6 +16,7 @@ import { Progress } from "./components/ui/progress";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { IVideo, useVideoStore } from "./stores/videoStore";
+import VideoToAudio from "video-to-audio";
 // import SyncerW from './workers/app.worker';
 
 function App() {
@@ -62,68 +63,92 @@ function App() {
   const waveformRef = useRef<any>(null);
   // const { handleChunkVideo } = useVideoChunk(); // TODO: call this if the video is ready for s3 upload
 
-  const load = async () => {
-    const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
-    const ffmpeg = ffmpegRef.current;
-    ffmpeg.on("log", ({ message }) => {
-      if (messageRef.current) messageRef.current.innerHTML = message;
-    });
+  // const load = async () => {
+  //   const baseURL = "https://unpkg.com/@ffmpeg/core-mt@0.12.6/dist/esm";
+  //   const ffmpeg = ffmpegRef.current;
+  //   ffmpeg.on("log", ({ message }) => {
+  //     if (messageRef.current) messageRef.current.innerHTML = message;
+  //   });
 
-    ffmpeg.on("progress", ({ progress }) => {
-      if (progress <= 1) {
-        setProgress(Math.ceil(Math.abs(progress) * 100));
-      }
-    });
+  //   ffmpeg.on("progress", ({ progress }) => {
+  //     if (progress <= 1) {
+  //       setProgress(Math.ceil(Math.abs(progress) * 100));
+  //     }
+  //   });
 
-    // toBlobURL is used to bypass CORS issue, urls with the same
-    // domain can be used directly.
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.wasm`,
-        "application/wasm"
-      ),
-      workerURL: await toBlobURL(
-        `${baseURL}/ffmpeg-core.worker.js`,
-        "text/javascript"
-      ),
-    });
-    setLoaded(true);
-  };
+  //   // toBlobURL is used to bypass CORS issue, urls with the same
+  //   // domain can be used directly.
+  //   await ffmpeg.load({
+  //     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+  //     wasmURL: await toBlobURL(
+  //       `${baseURL}/ffmpeg-core.wasm`,
+  //       "application/wasm"
+  //     ),
+  //     workerURL: await toBlobURL(
+  //       `${baseURL}/ffmpeg-core.worker.js`,
+  //       "text/javascript"
+  //     ),
+  //   });
+  //   setLoaded(true);
+  // };
 
   const transcode = async () => {
-    // if (file && file.type === "audio/mp3") return
+    if (file && file.type === "audio/mp3") return;
+    const mp3Data = [];
+    console.log("asasas");
     setIsTranscoding(true);
-    const ffmpeg = ffmpegRef.current;
-    await ffmpeg.writeFile("input.mp4", await fetchFile(videoURL));
-    await ffmpeg.exec([
-      "-i",
-      "input.mp4",
-      "-af",
-      "highpass=f=200, lowpass=f=3000, afftdn=nf=-80:rf=-80",
-      "-b:a",
-      "64k",
-      "output.mp3",
-    ]);
-    const fileData = await ffmpeg.readFile("output.mp3");
-    const data = new Uint8Array(fileData as ArrayBuffer);
-    const audioBlob = new Blob([data.buffer], { type: "audio/mp3" });
+    const audioContext = new AudioContext();
+
+    // const ffmpeg = ffmpegRef.current;
+    // await ffmpeg.writeFile("input.mp4", await fetchFile(videoURL));
+    // await ffmpeg.exec([
+    //   "-i",
+    //   "input.mp4",
+    //   "-af",
+    //   "highpass=f=200, lowpass=f=3000, afftdn=nf=-80:rf=-80",
+    //   "-b:a",
+    //   "64k",
+    //   "output.mp3",
+    // ]);
+    // const fileData = await ffmpeg.readFile("output.mp3");
+    // const data = new Uint8Array(fileData as ArrayBuffer);
+    // const audioBlob = new Blob([data.buffer], { type: "audio/mp3" });
     const videoBlob = new Blob([file!], { type: file?.type || "video/mp4" });
 
     if (videoRef.current) {
-      const audioURL = URL.createObjectURL(
-        new Blob([data.buffer], { type: "audio/mp3" })
-      );
+      if (file) {
+        const convertedAudio = await VideoToAudio.convert(file, "mp3");
 
-      const downloadLink = document.createElement("a");
-      downloadLink.href = audioURL;
-      downloadLink.download = "output.mp3";
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+        if (convertedAudio) {
+          // console.log)()
+          // const audioURL = URL.createObjectURL(convertedAudio.data);
 
-      setAudioBase64(audioBlob);
-      setVideoBase64(videoBlob);
+          const downloadLink = document.createElement("a");
+          downloadLink.href = convertedAudio.data;
+          downloadLink.download = "output.mp3";
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+
+          await generateVideoThumbnails(file, 2, "file").then(
+            (res: string[]) => {
+              setThumbnail(res[1]);
+            }
+          );
+          setAudioBase64(convertedAudio.data);
+          setVideoBase64(videoBlob);
+          setTranscodedData({
+            id: uuidv4(),
+            video_url: videoURL,
+            audio_url: convertedAudio.data,
+            file_name: file?.name || "input.mp3",
+            source_file_type: file?.type || "video/mp4",
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      // setAudioBase64(audioBlob);
 
       // videoRef.current.src = audioURL;
 
@@ -135,40 +160,25 @@ function App() {
       // });
 
       //audio file reader instance
-      const audioReader = new FileReader();
-      audioReader.readAsDataURL(audioBlob);
-      audioReader.addEventListener(
-        "load",
-        (e: ProgressEvent<FileReader>) => {}
-      );
-
-      if (file) {
-        generateVideoThumbnails(file, 2, "file").then((res: string[]) => {
-          setThumbnail(res[1]);
-        });
-      }
-
-      setTranscodedData({
-        id: uuidv4(),
-        video_url: videoURL,
-        audio_url: audioURL,
-        file_name: file?.name || "input.mp3",
-        source_file_type: file?.type || "video/mp4",
-        created_at: new Date().toISOString(),
-      });
+      // const audioReader = new FileReader();
+      // audioReader.readAsDataURL(audioBlob);
+      // audioReader.addEventListener(
+      //   "load",
+      //   (e: ProgressEvent<FileReader>) => {}
+      // );
     }
   };
 
-  useEffect(() => {
-    if (!loaded) {
-      load(); //load ffmpeg
-    }
+  // useEffect(() => {
+  //   if (!loaded) {
+  //     load(); //load ffmpeg
+  //   }
 
-    return () => {
-      ffmpegRef.current.terminate();
-      setLoaded(false);
-    };
-  }, []);
+  //   return () => {
+  //     ffmpegRef.current.terminate();
+  //     setLoaded(false);
+  //   };
+  // }, []);
 
   useEffect(() => {
     localforage.setDriver(INDEXEDDB);
@@ -327,8 +337,6 @@ function App() {
     return () => clearInterval(intervalId);
   }, [isTranscoding, videoURL]);
 
-  console.log(videoBase64);
-
   useEffect(() => {
     if (typeof videoURL === "string" && waveformRef.current && peaks) {
       // const blob = new Blob([transcodedData.audio_base64], {
@@ -400,100 +408,106 @@ function App() {
         ))}
       </ScrollArea> */}
       <div className="flex items-center justify-center w-screen h-[calc(100vh-40vh)] flex-1">
-        {loaded ? (
-          <div className="flex flex-col items-center justify-center">
-            {videoURL !== "" ? (
-              <>
-                {!isTranscoded && (
+        <div className="flex flex-col items-center justify-center">
+          {videoURL !== "" ? (
+            <>
+              {!isTranscoded && (
+                <video
+                  ref={videoRef}
+                  controls
+                  src={videoURL}
+                  height={300}
+                  width={450}
+                ></video>
+              )}
+              <br />
+              <span className="mb-2">
+                Time:{" "}
+                {Duration.fromObject({ seconds: timeElapsed }).toFormat(
+                  "mm:ss"
+                )}{" "}
+              </span>
+
+              {isTranscoded ? (
+                <div className="flex flex-col items-center justify-center gap-2 pt-20">
                   <video
                     ref={videoRef}
                     controls
-                    src={videoURL}
+                    src={URL.createObjectURL(
+                      transcodedData.video_base64 as Blob
+                    )}
                     height={300}
                     width={450}
                   ></video>
-                )}
-                <br />
-                <span className="mb-2">
-                  Time:{" "}
-                  {Duration.fromObject({ seconds: timeElapsed }).toFormat(
-                    "mm:ss"
-                  )}{" "}
-                </span>
 
-                {isTranscoded ? (
-                  <div className="flex flex-col items-center justify-center gap-2 pt-20">
-                    <video
-                      ref={videoRef}
-                      controls
-                      src={URL.createObjectURL(
-                        transcodedData.video_base64 as Blob
-                      )}
-                      height={300}
-                      width={450}
-                    ></video>
+                  <div className=" flex flex-col gap-2">
+                    <span>Generated Thumbnail:</span>
+                    <img src={thumbnail} height={200} width={300} />
+                  </div>
 
-                    <div className=" flex flex-col gap-2">
-                      <span>Generated Thumbnail:</span>
-                      <img src={thumbnail} height={200} width={300} />
-                    </div>
-
+                  <Button
+                    variant={"default"}
+                    onClick={() => {
+                      setFile(undefined);
+                      setIsTranscoded(false);
+                      setVideoURL("");
+                      setProgress(0);
+                      setTimeElapsed(0);
+                      setAudioBase64(undefined);
+                      setVideoBase64(undefined);
+                    }}
+                    className=" border border-solid border-gray-400 px-2 py-1 rounded-md mb-2"
+                  >
+                    Upload new file
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {!isTranscoding && (
                     <Button
                       variant={"default"}
-                      onClick={() => {
-                        setFile(undefined);
-                        setIsTranscoded(false);
-                        setVideoURL("");
-                        setProgress(0);
-                        setTimeElapsed(0);
-                        setAudioBase64(undefined);
-                        setVideoBase64(undefined);
-                      }}
-                      className=" border border-solid border-gray-400 px-2 py-1 rounded-md mb-2"
+                      onClick={transcode}
+                      className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
                     >
-                      Upload new file
+                      Transcode video to mp3
                     </Button>
+                  )}
+
+                  <div className="flex items-center gap-1 w-full">
+                    <Progress value={progress} className="" />
+                    <span>{progress}%</span>
                   </div>
-                ) : (
-                  <>
-                    {!isTranscoding && (
-                      <Button
-                        variant={"default"}
-                        onClick={transcode}
-                        className=" border border-solid border-gray-400 px-2 py-1 rounded-md"
-                      >
-                        Transcode video to mp3
-                      </Button>
-                    )}
-
-                    <div className="flex items-center gap-1 w-full">
-                      <Progress value={progress} className="" />
-                      <span>{progress}%</span>
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="video">Please select a video</Label>
-                <Input
-                  id="video"
-                  type="file"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      const file = e.target.files[0];
-                      const blob = new Blob([file], { type: file.type });
-                      const url = URL.createObjectURL(blob);
-                      setVideoURL(url);
-                      setFile(file);
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        ) : null}
-
+                </>
+              )}
+            </>
+          ) : (
+            <div className="grid w-full max-w-sm items-center gap-1.5">
+              <Label htmlFor="video">Please select a video</Label>
+              <Input
+                id="video"
+                type="file"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    const file = e.target.files[0];
+                    const blob = new Blob([file], { type: file.type });
+                    const url = URL.createObjectURL(blob);
+                    setVideoURL(url);
+                    setFile(file);
+                  }
+                }}
+              />
+            </div>
+          )}
+        </div>
+        <iframe
+          width="560"
+          height="315"
+          src="https://www.youtube.com/embed/J1BMeGfW5NI?si=d8TfowQ_km0Vt8IW"
+          title="YouTube video player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+        ></iframe>
         <Toaster />
       </div>
       <div className="fixed bottom-0">
