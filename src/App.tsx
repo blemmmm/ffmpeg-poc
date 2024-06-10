@@ -117,7 +117,7 @@ function App() {
 
     if (videoRef.current) {
       if (file) {
-        const convertedAudio = await VideoToAudio.convert(file, "mp3");
+        const convertedAudio = await VideoToAudio.convert(file, "mp3"); //returns audio blob url
 
         if (convertedAudio) {
           // console.log)()
