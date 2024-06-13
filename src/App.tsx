@@ -130,8 +130,14 @@ function App() {
       setVideoBase64(videoBlob);
 
       blobToBase64(audioBlob).then((value: any) => {
-        window.opener.postMessage(JSON.stringify({ audio: value }), "*");
-        window.close();
+        if (window.opener) {
+          window.opener.postMessage(JSON.stringify({ audio: value }), "*");
+          window.close();
+        } else {
+          console.error("window.opener is null, using fallback");
+          // Implement a fallback mechanism, e.g., localStorage
+          // localStorage.setItem("message", message);
+        }
       });
 
       // blobToBase64(audioBlob).then((value: any) => {
@@ -188,7 +194,7 @@ function App() {
     myWorker.onmessage = (event) => {
       console.log({ crossOriginIsolated: event.data });
     };
-  }, [myWorker]);
+  }, []);
 
   useEffect(() => {
     localforage.setDriver(INDEXEDDB);
