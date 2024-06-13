@@ -91,6 +91,14 @@ function App() {
     setLoaded(true);
   };
 
+  function blobToBase64(blob: any) {
+    return new Promise((resolve, _) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  }
+
   const transcode = async () => {
     // if (file && file.type === "audio/mp3") return
     setIsTranscoding(true);
@@ -115,15 +123,28 @@ function App() {
         new Blob([data.buffer], { type: "audio/mp3" })
       );
 
-      const downloadLink = document.createElement("a");
-      downloadLink.href = audioURL;
-      downloadLink.download = "output.mp3";
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
+      // const downloadLink = document.createElement("a");
+      // downloadLink.href = audioURL;
+      // downloadLink.download = "output.mp3";
+      // document.body.appendChild(downloadLink);
+      // downloadLink.click();
+      // document.body.removeChild(downloadLink);
 
       setAudioBase64(audioBlob);
       setVideoBase64(videoBlob);
+
+      blobToBase64(audioBlob).then((value: any) => {
+        window.opener.postMessage(JSON.stringify({ audio: value }), '*');
+        window.close();
+      });
+
+      // blobToBase64(audioBlob).then((value: any) => {
+      //   console.log("Audio", value);
+      // });
+
+      // blobToBase64(videoBlob).then((value: any) => {
+      //   console.log("VIDEO", value);
+      // });
 
       // videoRef.current.src = audioURL;
 
@@ -327,7 +348,7 @@ function App() {
     return () => clearInterval(intervalId);
   }, [isTranscoding, videoURL]);
 
-  console.log(videoBase64);
+  // console.log(videoBase64);
 
   useEffect(() => {
     if (typeof videoURL === "string" && waveformRef.current && peaks) {
