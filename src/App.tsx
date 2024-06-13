@@ -135,6 +135,7 @@ function App() {
           window.close();
         } else {
           console.error("window.opener is null, using fallback");
+          console.log({ value });
           // Implement a fallback mechanism, e.g., localStorage
           // localStorage.setItem("message", message);
         }
