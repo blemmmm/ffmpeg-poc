@@ -26,7 +26,7 @@ function App() {
   //     syncerWorker.terminate();
   //   }
   // },[]);
-
+  const myWorker = new Worker("app.worker.ts");
   const { toast } = useToast();
   const { setUploadedVideos } = useVideoStore();
   const [loaded, setLoaded] = useState(false);
@@ -181,6 +181,12 @@ function App() {
       setLoaded(false);
     };
   }, []);
+
+  useEffect(() => {
+    myWorker.onmessage = (event) => {
+      console.log({ crossOriginIsolated: event.data });
+    };
+  }, [myWorker]);
 
   useEffect(() => {
     localforage.setDriver(INDEXEDDB);
