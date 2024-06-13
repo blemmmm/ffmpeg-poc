@@ -28,7 +28,7 @@ function App() {
   // },[]);
 
   const { toast } = useToast();
-  const { uploadedVideos, setUploadedVideos } = useVideoStore();
+  const { setUploadedVideos } = useVideoStore();
   const [loaded, setLoaded] = useState(false);
   const ffmpegRef = useRef(new FFmpeg());
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -134,7 +134,7 @@ function App() {
       setVideoBase64(videoBlob);
 
       blobToBase64(audioBlob).then((value: any) => {
-        window.opener.postMessage(JSON.stringify({ audio: value }), '*');
+        window.opener.postMessage(JSON.stringify({ audio: value }), "*");
         window.close();
       });
 
@@ -158,10 +158,7 @@ function App() {
       //audio file reader instance
       const audioReader = new FileReader();
       audioReader.readAsDataURL(audioBlob);
-      audioReader.addEventListener(
-        "load",
-        (e: ProgressEvent<FileReader>) => {}
-      );
+      audioReader.addEventListener("load", () => {});
 
       if (file) {
         generateVideoThumbnails(file, 2, "file").then((res: string[]) => {
