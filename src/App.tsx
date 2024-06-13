@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -26,7 +27,8 @@ function App() {
   //     syncerWorker.terminate();
   //   }
   // },[]);
-  const myWorker = new Worker("app.worker.ts");
+  const myWorker = new Worker("app.worker.js");
+
   const { toast } = useToast();
   const { setUploadedVideos } = useVideoStore();
   const [loaded, setLoaded] = useState(false);
