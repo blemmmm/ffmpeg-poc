@@ -7,7 +7,7 @@ export interface IVideo {
   file_name: string;
   source_file_type: string;
   created_at: string;
-  video_base64?: string | ArrayBuffer | null;
+  video_base64?: string | ArrayBuffer | Blob | null;
   audio_base64?: string | ArrayBuffer | Blob | null;
   thumbnail?: string;
 }
