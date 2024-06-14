@@ -36,8 +36,23 @@ async function GetUploadLinksRequest(payload: CreateUploadLinksRequestPayloadInt
   });
 }
 
+async function PromisedUploadRequest(url: string, file: any){
+  return await Axios.put(`${url}`, file, {
+    headers: {
+      'Content-Type': 'application/binary',
+    }
+  }).then((response) => {
+    if(response.data.headers){
+      return response.headers['ETag'];
+    }
+  }).catch((err) => {
+    throw new Error(err);
+  })
+}
+
 export { 
   // UploadFile,
   CreateProcessIDRequest,
-  GetUploadLinksRequest
+  GetUploadLinksRequest,
+  PromisedUploadRequest
 };

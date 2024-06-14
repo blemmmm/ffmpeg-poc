@@ -20,7 +20,8 @@ import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { IVideo, useVideoStore } from "./stores/videoStore";
 import { DecodedTokenInterface } from "./configs/interfaces";
-import { CreateProcessIDRequest, GetUploadLinksRequest } from "./requests/https";
+import { CreateProcessIDRequest, GetUploadLinksRequest, PromisedUploadRequest } from "./requests/https";
+import { useVideoChunk } from "./helpers/chunkVideo";
 // import SyncerW from './workers/app.worker';
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
   const myWorker = new Worker("app.worker.js");
 
   const params = useLocation();
+  const { handleChunkVideo } = useVideoChunk();
 
   const { toast } = useToast();
   const { setUploadedVideos } = useVideoStore();
@@ -147,6 +149,28 @@ function App() {
         if(response.data.process_id){
           const process_id = response.data.process_id;
 
+          // Video block
+
+          if(file){
+            GetUploadLinksRequest({
+              process_id: process_id,
+              chunk_size: 10 * 1024 * 1024,
+              extension: "mp4",
+              file_size: videoBlob.size,
+              access_token: decodedToken.access_token,
+            }).then((response) => {
+              if(response.data){
+                handleChunkVideo(file, response.data.presigned_url).then((value) => {
+                  console.log(value);
+                }).catch((err) => {
+                  console.log(err);
+                })
+              }
+            }).catch((err) => {
+              console.log(err);
+            })
+          }
+
           // Audio block
 
           GetUploadLinksRequest({
@@ -157,6 +181,11 @@ function App() {
           }).then((response) => {
             if(response.data){
               console.log(response.data);
+              PromisedUploadRequest(response.data.presigned_url[0], audioBlob).then((response) => {
+                console.log(response);
+              }).catch((err) => {
+                console.log(err);
+              })
             }
           }).catch((err) => {
             console.log(err);

@@ -1,3 +1,5 @@
+import { PromisedUploadRequest } from "@/requests/https";
+
 export const useVideoChunk = () => {
   const fileToBase64 = (file: Blob) => {
     return new Promise((resolve, reject) => {
@@ -25,34 +27,35 @@ export const useVideoChunk = () => {
     return new Blob([byteArray], { type: mimeType });
   };
 
-  const handleChunkVideo = async (file: File) => {
-    if (!file) return;
+  const handleChunkVideo = async (file: File, urls: string[]) => {
+    const parts = [];
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let currentChunk = 0;
 
-    const chunkSize = 1024 * 1024; // 1MB chunks
-    const totalChunks = Math.ceil(file.size / chunkSize);
-    const base64Chunks = [];
+    try {
+      // const urls = await Promise.all(presigned_url);
 
-    // Slice and convert each chunk to Base64
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize, file.size);
-      const chunk = file.slice(start, end);
+      const chunkUploadPromises = [];
 
-      const base64Chunk = await fileToBase64(chunk);
-      base64Chunks.push(base64Chunk);
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = file.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        chunkUploadPromises.push(
+          PromisedUploadRequest(urls[i], chunk).then((etag_value) => {
+            parts.push({ PartNumber: i + 1, ETag: etag_value });
+            currentChunk++; // Increment counter for each successfully uploaded chunk
+              //   progressElement.innerHTML = `${currentChunk} / ${totalChunks}`; // Update progress element
+          }),
+          // sendChunk(urls[i], chunk).then((etag_value) => {
+          //   parts.push({ PartNumber: i + 1, ETag: etag_value });
+          //   currentChunk++; // Increment counter for each successfully uploaded chunk
+          //   //   progressElement.innerHTML = `${currentChunk} / ${totalChunks}`; // Update progress element
+          // }),
+        );
+      }
+    }catch(ex: any){
+      throw new Error(ex);
     }
-
-    // Reassemble the Base64 chunks into a single Base64 string
-    const fullBase64 = base64Chunks.join("");
-
-    // Convert Base64 string back to a Blob
-    // const videoBlob = base64ToBlob(fullBase64, file.type);
-
-    // Create a URL for the Blob and set it as the video source
-    // const videoUrl = URL.createObjectURL(videoBlob);
-    return {
-      video_base64: `data:application/octet-stream;base64,${fullBase64}`,
-    };
   };
 
   return {
