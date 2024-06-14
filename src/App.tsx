@@ -20,6 +20,7 @@ import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { IVideo, useVideoStore } from "./stores/videoStore";
 import { DecodedTokenInterface } from "./configs/interfaces";
+import { CreateProcessIDRequest, GetUploadLinksRequest } from "./requests/https";
 // import SyncerW from './workers/app.worker';
 
 function App() {
@@ -134,16 +135,48 @@ function App() {
       setAudioBase64(audioBlob);
       setVideoBase64(videoBlob);
 
-      blobToBase64(audioBlob).then((value: any) => {
-        if (window.opener) {
-          window.opener.postMessage(JSON.stringify({ audio: value }), "*");
-          window.close();
-        } else {
-          console.error("window.opener is null, using fallback");
-          console.log({ value });
-          // Implement a fallback mechanism, e.g., localStorage
-          // localStorage.setItem("message", message);
+      const tokenParam = params.search.substring(1).split("=")[1];
+      const decodedToken: DecodedTokenInterface = jwtDecode(tokenParam);
+
+      CreateProcessIDRequest({
+        file_size: videoBlob.size,
+        transcription_name: videoRef.current.title,
+        duration_in_seconds: videoRef.current.duration,
+        access_token: decodedToken.access_token,
+      }).then((response: any) => {
+        if(response.data.process_id){
+          const process_id = response.data.process_id;
+
+          // Audio block
+
+          GetUploadLinksRequest({
+            process_id: process_id,
+            extension: "mp3",
+            file_size: audioBlob.size,
+            access_token: decodedToken.access_token,
+          }).then((response) => {
+            if(response.data){
+              console.log(response.data);
+            }
+          }).catch((err) => {
+            console.log(err);
+          })
         }
+      }).catch((err) => {
+        console.log(err);
+      })
+
+      blobToBase64(audioBlob).then((_: any) => {
+        // if (window.opener) {
+        //   window.opener.postMessage(JSON.stringify({ audio: value }), "*");
+        //   window.close();
+        // } else {
+        //   console.error("window.opener is null, using fallback");
+        //   console.log({ value });
+        //   // Implement a fallback mechanism, e.g., localStorage
+        //   // localStorage.setItem("message", message);
+        // }
+        
       });
 
       // blobToBase64(audioBlob).then((value: any) => {

@@ -6,7 +6,7 @@ export interface CreateProcessIDPayloadInterface {
 }
 
 export interface CreateUploadLinksRequestPayloadInterface {
-  chunk_size: number;
+  chunk_size?: number;
   process_id: string;
   extension: string;
   file_size: number;

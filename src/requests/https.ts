@@ -10,12 +10,12 @@ async function CreateProcessIDRequest(payload: CreateProcessIDPayloadInterface){
 
   const encodedToken = sign(payload, CONFIG.ACCESS_SECRET);
 
-  await Axios.post(
+  return await Axios.post(
     `${BASE_URL}${TRANSCODER.CREATE_PROCESS_ID}`,{
       token: encodedToken
   })
   .then((response) => {
-    return response.data;
+    return response;
   })
   .catch((err) => {
     throw new Error(err);
@@ -26,12 +26,10 @@ async function GetUploadLinksRequest(payload: CreateUploadLinksRequestPayloadInt
 
   const encodedToken = sign(payload, CONFIG.ACCESS_SECRET);
 
-  await Axios.post(
-    `${BASE_URL}${TRANSCODER.UPLOAD_VIDEO}`,{
-      token: encodedToken
-  })
+  return await Axios.get(
+    `${BASE_URL}${TRANSCODER.UPLOAD_VIDEO}?token=${encodedToken}`)
   .then((response) => {
-    return response.data;
+    return response;
   })
   .catch((err) => {
     throw new Error(err);
