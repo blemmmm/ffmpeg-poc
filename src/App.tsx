@@ -8,6 +8,8 @@ import { generateVideoThumbnails } from "@rajesh896/video-thumbnails-generator";
 import localforage, { INDEXEDDB } from "localforage";
 import { Duration } from "luxon";
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
 import { v4 as uuidv4 } from "uuid";
 import WaveSurfer from "wavesurfer.js";
 import { Button } from "./components/ui/button";
@@ -17,6 +19,7 @@ import { Progress } from "./components/ui/progress";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./components/ui/use-toast";
 import { IVideo, useVideoStore } from "./stores/videoStore";
+import { DecodedTokenInterface } from "./configs/interfaces";
 // import SyncerW from './workers/app.worker';
 
 function App() {
@@ -28,6 +31,8 @@ function App() {
   //   }
   // },[]);
   const myWorker = new Worker("app.worker.js");
+
+  const params = useLocation();
 
   const { toast } = useToast();
   const { setUploadedVideos } = useVideoStore();
@@ -403,6 +408,36 @@ function App() {
       return () => wavesurfer.destroy();
     }
   }, [videoURL, isTranscoded, peaks]);
+
+  useEffect(() => {
+    const tokenParam = params.search.substring(1);
+
+    if(tokenParam && tokenParam.trim() !== ""){
+      const tokenValue = tokenParam.split("=")[1];
+
+      if(tokenValue){
+        try{
+          const decodedToken: DecodedTokenInterface = jwtDecode(tokenValue);
+
+          if(decodedToken.access_token){
+            console.log(decodedToken);
+          }
+          else{
+            window.location.href = 'https://app-staging.salina.app/'
+          }
+        }
+        catch(ex){
+          window.location.href = 'https://app-staging.salina.app/'
+        }
+      }
+      else{
+        window.location.href = 'https://app-staging.salina.app/'
+      }
+    }
+    else{
+      window.location.href = 'https://app-staging.salina.app/'
+    }
+  },[])
 
   return (
     <div className="flex items-start gap-4">

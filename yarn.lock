@@ -632,6 +632,18 @@
   resolved "https://registry.npmjs.org/@types/estree/-/estree-1.0.5.tgz"
   integrity sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==
 
+"@types/jwt-decode@^3.1.0":
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/@types/jwt-decode/-/jwt-decode-3.1.0.tgz#eb1b24f436962b8857beaf8addfd542de56670a2"
+  integrity sha512-tthwik7TKkou3mVnBnvVuHnHElbjtdbM63pdBCbZTirCt3WAdM73Y79mOri7+ljsS99ZVwUFZHLMxJuJnv/z1w==
+  dependencies:
+    jwt-decode "*"
+
+"@types/jwt-encode@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@types/jwt-encode/-/jwt-encode-1.0.3.tgz#c4ce6517d3b86757894640e5977d1cbe0ba71ba0"
+  integrity sha512-4IAoiMbBSbiUfYkBZYvj6Sj68d5qaaYeHfeoxQp5qpYkjOPcou9chpfEqw7OfoTQxsrS6HnTVN/RTCF866Z9sw==
+
 "@types/luxon@^3.4.2":
   version "3.4.2"
   resolved "https://registry.npmjs.org/@types/luxon/-/luxon-3.4.2.tgz"
@@ -1510,6 +1522,18 @@ json-stable-stringify-without-jsonify@^1.0.1:
   resolved "https://registry.npmjs.org/json-stable-stringify-without-jsonify/-/json-stable-stringify-without-jsonify-1.0.1.tgz"
   integrity sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==
 
+jwt-decode@*, jwt-decode@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/jwt-decode/-/jwt-decode-4.0.0.tgz#2270352425fd413785b2faf11f6e755c5151bd4b"
+  integrity sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==
+
+jwt-encode@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/jwt-encode/-/jwt-encode-1.0.1.tgz#6602a0475f757c7d5d559a7e923f3d3d5ecd938c"
+  integrity sha512-QrGiNhynbAYyFdbC1GbjborzenSFs5Ga+2nE0uBokGXsH11xrgd1AX55HR7P+wGQyyZOn6LUO5iKlh74dlhBkA==
+  dependencies:
+    ts.cryptojs256 "^1.0.1"
+
 keyv@^4.5.3:
   version "4.5.4"
   resolved "https://registry.npmjs.org/keyv/-/keyv-4.5.4.tgz"
@@ -2126,6 +2150,11 @@ ts-interface-checker@^0.1.9:
   version "0.1.13"
   resolved "https://registry.npmjs.org/ts-interface-checker/-/ts-interface-checker-0.1.13.tgz"
   integrity sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==
+
+ts.cryptojs256@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/ts.cryptojs256/-/ts.cryptojs256-1.0.1.tgz#56a3d3a3bc022ad358b3e62cd8dae3224d9384f1"
+  integrity sha512-9XtEgRVOZBCdpPcCEhfvv9I2AVXdvfI81I/KpFM0wEfbq5JVHlXH7bfIjGQmYrIHGiBEHKsIaStQ87k926J7dA==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
